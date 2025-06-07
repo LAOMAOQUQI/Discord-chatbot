@@ -10,10 +10,10 @@ DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 intents = discord.Intents.default()
 intents.message_content = True  # 必须启用消息内容意图
 
-# 添加代理配置（如果使用VPN）
+# 生产环境移除代理配置（通过环境变量判断）
 client = discord.Client(
     intents=intents,
-    proxy='http://127.0.0.1:50699'  # 根据实际代理端口修改
+    proxy=os.getenv('PROXY') if os.getenv('ENV') == 'dev' else None
 )
 
 async def call_deepseek_api(message_content: str) -> str:
@@ -55,4 +55,6 @@ async def on_message(message):
             response = await call_deepseek_api(query)
             await message.channel.send(response[:2000])
 
-client.run(os.getenv('DISCORD_TOKEN'), reconnect=True)  # 添加重连参数
+if not os.getenv('DISCORD_TOKEN'):
+    raise ValueError("DISCORD_TOKEN环境变量未配置")
+client.run(os.getenv('DISCORD_TOKEN') or os.environ['DISCORD_TOKEN'], reconnect=True)  # 添加重连参数
