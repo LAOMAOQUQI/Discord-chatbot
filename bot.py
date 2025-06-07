@@ -16,7 +16,20 @@ client = discord.Client(
     proxy=os.getenv('PROXY') if os.getenv('ENV') == 'dev' else None
 )
 
-async def call_deepseek_api(message_content: str) -> str:
+# 添加对话历史记录字典
+conversation_history = {}
+
+async def call_deepseek_api(user_id: int, message_content: str) -> str:
+    # 维护对话历史
+    if user_id not in conversation_history:
+        conversation_history[user_id] = []
+    
+    conversation_history[user_id].append({"role": "user", "content": message_content})
+    
+    # 控制历史长度（保留最近5轮对话）
+    if len(conversation_history[user_id]) > 10:
+        conversation_history[user_id] = conversation_history[user_id][-10:]
+    
     headers = {
         "Authorization": f"Bearer {os.getenv('DEEPSEEK_API_KEY')}",
         "Content-Type": "application/json"
@@ -24,15 +37,18 @@ async def call_deepseek_api(message_content: str) -> str:
     
     data = {
         "model": "deepseek-chat",
-        "messages": [
-            {"role": "user", "content": message_content}
-        ]
+        "messages": conversation_history[user_id][-5:]  # 仅发送最近5条历史
     }
 
     try:
         response = requests.post(DEEPSEEK_API_URL, json=data, headers=headers)
         response.raise_for_status()
-        return response.json()['choices'][0]['message']['content']
+        response_content = response.json()['choices'][0]['message']['content']
+        
+        # 将AI回复加入历史
+        conversation_history[user_id].append({"role": "assistant", "content": response_content})
+        
+        return response_content
     except Exception as e:
         return f"API请求失败: {str(e)}"
 
@@ -52,7 +68,9 @@ async def on_message(message):
             return
 
         async with message.channel.typing():
-            response = await call_deepseek_api(query)
+            # 使用用户ID作为对话标识
+            user_id = message.author.id
+            response = await call_deepseek_api(user_id, query)
             await message.channel.send(response[:2000])
 
 if not os.getenv('DISCORD_TOKEN'):
