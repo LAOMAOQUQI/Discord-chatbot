@@ -1,0 +1,5 @@
+# 确认.gitignore包含以下内容
+.env
+__pycache__/
+*.pyc
+.DS_Store
