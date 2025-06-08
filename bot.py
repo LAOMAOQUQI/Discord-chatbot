@@ -61,6 +61,16 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # 新增重置指令
+    if message.content == '!reset':
+        user_id = message.author.id
+        if user_id in conversation_history:
+            del conversation_history[user_id]
+            await message.channel.send("✅ 您的对话上下文已重置")
+        else:
+            await message.channel.send("ℹ️ 没有需要重置的对话记录")
+        return
+
     if message.content.startswith('!chat '):
         query = message.content[6:].strip()
         if not query:
